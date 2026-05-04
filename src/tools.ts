@@ -450,6 +450,60 @@ export function registerPlaylistTools(server: McpServer): void {
   );
 
   server.registerTool(
+    "playlist_audit",
+    {
+      title: "Audit Playlist",
+      description:
+        "Analyze a playlist and flag tracks that may not fit a focused coding vibe: " +
+        "too long (default >10 min), too short (default <1 min), or titles that hint at vocals/live recordings. " +
+        "Returns flagged tracks with reasons and a clean list. Zero mutations. " +
+        "Use this before playlist_batch_edit to decide what to remove.",
+      inputSchema: {
+        playlistId: z.string().min(1),
+        maxDurationSeconds: z
+          .number().int().positive().optional()
+          .describe("Flag tracks longer than this. Default 600s (10 min)."),
+        minDurationSeconds: z
+          .number().int().positive().optional()
+          .describe("Flag tracks shorter than this. Default 60s."),
+        flagVocalKeywords: z
+          .boolean().optional()
+          .describe("Check title for vocal/live keywords (feat, live, acoustic, choir…). Default true."),
+        customFlagTerms: z
+          .array(z.string().min(1)).max(50).optional()
+          .describe("Extra terms to flag in track title or artist name.")
+      },
+      annotations: ReadOnlyExternal
+    },
+    toolHandler(async (input) => provider.auditPlaylist(input))
+  );
+
+  server.registerTool(
+    "playlist_batch_edit",
+    {
+      title: "Batch Edit Playlist",
+      description:
+        "Remove specific tracks and add new ones in a single confirmed operation. " +
+        "Shows a quota cost estimate in dry-run mode before touching the API. " +
+        "Defaults to dryRun:true; set dryRun:false and confirm:true to apply. " +
+        "Pass videoIds to remove and track specs (title+artist or videoId) to add. " +
+        "Prefer this over separate remove + add calls to save quota.",
+      inputSchema: {
+        playlistId: z.string().min(1),
+        removeVideoIds: z.array(z.string().min(1)).max(500).optional()
+          .describe("Video IDs to remove from the playlist."),
+        addTracks: z.array(TrackSpecSchema).max(500).optional()
+          .describe("Tracks to add. Pass videoId for exact adds; title+artist to search."),
+        dryRun: z.boolean().default(true),
+        confirm: z.boolean().default(false),
+        minConfidence: z.number().min(0).max(1).optional()
+      },
+      annotations: DestructiveExternalMutation
+    },
+    toolHandler(async (input) => provider.batchEdit(input))
+  );
+
+  server.registerTool(
     "playlist_quota_status",
     {
       title: "Quota Status",

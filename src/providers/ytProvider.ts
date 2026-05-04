@@ -552,6 +552,134 @@ export class YTProvider {
     };
   }
 
+  async auditPlaylist(input: {
+    playlistId: string;
+    maxDurationSeconds?: number;
+    minDurationSeconds?: number;
+    flagVocalKeywords?: boolean;
+    customFlagTerms?: string[];
+  }): Promise<{
+    playlistId: string;
+    total: number;
+    flaggedCount: number;
+    flagged: Array<{ item: PlaylistItem; reasons: string[] }>;
+    ok: PlaylistItem[];
+    summary: string;
+  }> {
+    const playlist = await this.getPlaylist(input.playlistId);
+    const maxDuration = input.maxDurationSeconds ?? 600;
+    const minDuration = input.minDurationSeconds ?? 60;
+    const checkVocals = input.flagVocalKeywords !== false;
+    const vocalKeywords = ["feat", "ft.", "ft ", "live", "acoustic", "cover", "vocal", "voice", "choir", "strings", "orchestra"];
+    const customTerms = (input.customFlagTerms ?? []).map((t) => t.toLowerCase());
+
+    const flagged: Array<{ item: PlaylistItem; reasons: string[] }> = [];
+    const ok: PlaylistItem[] = [];
+
+    for (const item of playlist.items) {
+      const reasons: string[] = [];
+      const titleLower = item.title.toLowerCase();
+
+      if (item.durationSeconds !== undefined) {
+        if (item.durationSeconds > maxDuration) {
+          const mins = Math.round(item.durationSeconds / 60);
+          reasons.push(`Too long (${mins} min > ${Math.round(maxDuration / 60)} min limit)`);
+        }
+        if (item.durationSeconds < minDuration) {
+          reasons.push(`Too short (${item.durationSeconds}s < ${minDuration}s limit)`);
+        }
+      }
+
+      if (checkVocals) {
+        const matchedKeyword = vocalKeywords.find((kw) => titleLower.includes(kw));
+        if (matchedKeyword) {
+          reasons.push(`Possible vocals/live — title contains "${matchedKeyword}"`);
+        }
+      }
+
+      for (const term of customTerms) {
+        if (titleLower.includes(term) || item.artists.some((a) => a.toLowerCase().includes(term))) {
+          reasons.push(`Matches custom flag term "${term}"`);
+        }
+      }
+
+      if (reasons.length) {
+        flagged.push({ item, reasons });
+      } else {
+        ok.push(item);
+      }
+    }
+
+    return {
+      playlistId: input.playlistId,
+      total: playlist.items.length,
+      flaggedCount: flagged.length,
+      flagged,
+      ok,
+      summary: `${flagged.length} of ${playlist.items.length} tracks flagged for review. ${ok.length} tracks look good.`
+    };
+  }
+
+  async batchEdit(input: {
+    playlistId: string;
+    removeVideoIds?: string[];
+    addTracks?: TrackSearchSpec[];
+    dryRun?: boolean;
+    confirm?: boolean;
+    minConfidence?: number;
+  }): Promise<unknown> {
+    const removeCount = input.removeVideoIds?.length ?? 0;
+    const addSpecs = input.addTracks ?? [];
+
+    // Match tracks to resolve videoIds (uses ytmusic, no quota cost)
+    const addMatches = addSpecs.length ? await this.matchTracks(addSpecs, { minConfidence: input.minConfidence }) : [];
+    const addVideoIds = selectedVideoIds(addMatches);
+
+    // Quota estimate: remove costs 50/track + 1 for listing; add costs 50/track
+    const estimatedQuotaCost = removeCount * 50 + (removeCount > 0 ? 1 : 0) + addVideoIds.length * 50;
+
+    const previewResult = {
+      playlistId: input.playlistId,
+      remove: { count: removeCount, videoIds: input.removeVideoIds ?? [] },
+      add: {
+        requested: addSpecs.length,
+        matched: addMatches.filter((m) => m.status === "matched").length,
+        ambiguous: addMatches.filter((m) => m.status === "ambiguous").length,
+        missing: addMatches.filter((m) => m.status === "missing").length,
+        matches: addMatches
+      },
+      estimatedQuotaCost,
+      message: ""
+    };
+
+    if (input.dryRun !== false) {
+      return { ...previewResult, dryRun: true, message: "Dry run — call again with dryRun:false and confirm:true to apply." };
+    }
+
+    if (!input.confirm) {
+      return { ...previewResult, dryRun: true, message: "Set confirm:true to apply these changes." };
+    }
+
+    const data = await this.getDataClient();
+    const results: { removed?: { removedPlaylistItemIds: string[] }; added?: PlaylistItem[] } = {};
+
+    if (removeCount > 0) {
+      results.removed = await data.removeTracks({ playlistId: input.playlistId, videoIds: input.removeVideoIds });
+    }
+
+    if (addVideoIds.length > 0) {
+      results.added = await data.addTracks(input.playlistId, addVideoIds);
+    }
+
+    return {
+      playlistId: input.playlistId,
+      removedCount: results.removed?.removedPlaylistItemIds.length ?? 0,
+      addedCount: results.added?.length ?? 0,
+      skippedTracks: addMatches.filter((m) => m.status !== "matched"),
+      estimatedQuotaUsed: estimatedQuotaCost
+    };
+  }
+
   async quotaStatus(): Promise<ReturnType<typeof import("../utils/quota.js").quotaStatus>> {
     const { quotaStatus } = await import("../utils/quota.js");
     return quotaStatus();

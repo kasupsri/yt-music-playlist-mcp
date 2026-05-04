@@ -136,7 +136,7 @@ export class YTDataClient {
     description?: string;
     privacyStatus?: PrivacyStatus;
   }): Promise<PlaylistSummary> {
-    void trackQuota(1);
+    void trackQuota(50);
     const response = await this.youtube.playlists.insert({
       part: ["snippet", "status"],
       requestBody: {
@@ -159,6 +159,7 @@ export class YTDataClient {
     description?: string;
     privacyStatus?: PrivacyStatus;
   }): Promise<PlaylistSummary> {
+    void trackQuota(50);
     const current = await this.getPlaylist(input.playlistId);
     const response = await this.youtube.playlists.update({
       part: ["snippet", "status"],
@@ -178,6 +179,7 @@ export class YTDataClient {
   }
 
   async deletePlaylist(playlistId: string): Promise<{ playlistId: string; deleted: true }> {
+    void trackQuota(50);
     await this.youtube.playlists.delete({ id: playlistId });
     return { playlistId, deleted: true };
   }
@@ -186,7 +188,7 @@ export class YTDataClient {
     const added: PlaylistItem[] = [];
 
     for (const videoId of videoIds) {
-      void trackQuota(1);
+      void trackQuota(50);
       const response = await this.youtube.playlistItems.insert({
         part: ["snippet", "contentDetails"],
         requestBody: {
@@ -228,7 +230,7 @@ export class YTDataClient {
 
     const removedPlaylistItemIds: string[] = [];
     for (const playlistItemId of playlistItemIds) {
-      void trackQuota(1);
+      void trackQuota(50);
       await this.youtube.playlistItems.delete({ id: playlistItemId });
       removedPlaylistItemIds.push(playlistItemId);
     }
@@ -247,7 +249,7 @@ export class YTDataClient {
       throw new Error(`Playlist item not found: ${input.playlistItemId}`);
     }
 
-    void trackQuota(1);
+    void trackQuota(50);
     const response = await this.youtube.playlistItems.update({
       part: ["snippet", "contentDetails"],
       requestBody: {
@@ -289,6 +291,7 @@ export class YTDataClient {
     let pageToken: string | undefined;
 
     do {
+      void trackQuota(1);
       const response = await this.youtube.playlistItems.list({
         part: ["snippet", "contentDetails"],
         playlistId,
