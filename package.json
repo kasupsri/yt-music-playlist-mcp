@@ -1,0 +1,64 @@
+{
+  "name": "yt-music-playlist-mcp",
+  "version": "0.1.0",
+  "description": "Local MCP server for AI-assisted YouTube Music playlist management via Claude, Codex, and other LLM clients.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Kasup Sri Bandara",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kasupsri/yt-music-playlist-mcp.git"
+  },
+  "homepage": "https://github.com/kasupsri/yt-music-playlist-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/kasupsri/yt-music-playlist-mcp/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "youtube",
+    "youtube-music",
+    "playlist",
+    "claude",
+    "ai",
+    "llm"
+  ],
+  "bin": {
+    "yt-music-playlist-mcp": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    ".env.example",
+    ".mcp.json.example"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli.ts",
+    "setup": "node dist/cli.js setup",
+    "serve:http": "node dist/cli.js serve-http",
+    "start": "node dist/cli.js",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@types/express": "^5.0.6",
+    "commander": "^14.0.2",
+    "express": "^5.2.1",
+    "google-auth-library": "^10.5.0",
+    "googleapis": "^169.0.0",
+    "open": "^10.2.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.14"
+  },
+  "engines": {
+    "node": ">=20.11"
+  }
+}

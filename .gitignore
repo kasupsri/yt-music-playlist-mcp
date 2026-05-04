@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+.local/
+.DS_Store
+.ytmusic-mcp/
+.youtube-music-playlist-mcp/
+client_secret*.json
+*.apps.googleusercontent.com.json
+token.json
+coverage/
+*.tsbuildinfo
+CLAUDE.md
+coding-background-playlist.md
+.mcp.json

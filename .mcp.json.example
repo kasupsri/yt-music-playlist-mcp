@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "yt-music-playlist": {
+      "command": "node",
+      "args": ["/absolute/path/to/yt-music-playlist-mcp/dist/cli.js"],
+      "env": {
+        "YOUTUBE_MUSIC_MCP_HOME": "/absolute/path/to/yt-music-playlist-mcp/.local"
+      }
+    }
+  }
+}
